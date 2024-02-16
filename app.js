@@ -9,6 +9,8 @@ const errorHandler = require('errorhandler');
 const session = require('express-session');
 const passport = require('passport');
 const routes = require('./routes');
+const fs = require('fs'); // Importa il modulo fs per leggere i file del certificato
+const https = require('https'); // Importa il modulo https per creare un server HTTPS
 
 // Express configuration
 const app = express();
@@ -34,19 +36,37 @@ app.get('/account', routes.site.account);
 
 app.get('/dialog/authorize', routes.oauth2.authorization);
 app.post('/dialog/authorize/decision', routes.oauth2.decision);
+
 app.post('/oauth/token', routes.oauth2.token);
+
+// app.post('/oauth/token', (req, res) => {
+//     const clientID = req.body.client_id;
+//     const clientSecret = req.body.client_secret;
+
+//     const fakeToken = {
+//         access_token: "faketoken123456789",
+//         token_type: "Bearer",
+//         expires_in: 3600
+//     };
+
+//     return res.json(fakeToken);
+// });
 
 app.get('/api/userinfo', routes.user.info);
 app.get('/api/clientinfo', routes.client.info);
 
-// Might have to comment out the line of code below for some serverless environments.
-// For example, it will work as is with @now/node-server, but not with @now/node.
+// Leggi il certificato SSL e la chiave privata dai file
+const options = {
+    key: fs.readFileSync(path.join(__dirname, 'certificate/key.pem')), // Percorso alla chiave privata
+    cert: fs.readFileSync(path.join(__dirname, 'certificate/cert.pem')) // Percorso al certificato SSL
+};
 
-// https://zeit.co/docs/v2/deployments/official-builders/node-js-server-now-node-server/
-// vs.
-// https://zeit.co/docs/v2/deployments/official-builders/node-js-now-node/
+const port = process.env.PORT || 443;
 
-app.listen(process.env.PORT || 3000);
+// Crea un server HTTPS anziché utilizzare app.listen()
+https.createServer(options, app).listen(port, () => {
+    console.log(`Server is running on https://localhost:${port}/login`);
+});
 
-// Required for @now/node, optional for @now/node-server.
+// Necessario per alcune piattaforme serverless, ma opzionale qui.
 module.exports = app;
