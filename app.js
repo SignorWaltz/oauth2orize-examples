@@ -65,7 +65,7 @@ const port = process.env.PORT || 443;
 
 // Crea un server HTTPS anziché utilizzare app.listen()
 https.createServer(options, app).listen(port, () => {
-    console.log(`Server is running on https://localhost:${port}/login`);
+    console.log(`Server is running on https://localhost:${port}/dialog/authorize`);
 });
 
 // Necessario per alcune piattaforme serverless, ma opzionale qui.
