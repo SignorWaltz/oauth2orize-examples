@@ -32,9 +32,11 @@ server.deserializeClient((id, done) => {
 });
 
 function issueTokens(userId, clientId, done) {
+  console.log(`Inizio emissione token: userID=${userId}, clientID=${clientId}`);
   db.users.findById(userId, (error, user) => {
     const accessToken = utils.getUid(256);
     const refreshToken = utils.getUid(256);
+    console.log(`Emissione token: userID=${userId}, clientID=${clientId}, accessToken=${accessToken}, refreshToken=${refreshToken}`);
     db.accessTokens.save(accessToken, userId, clientId, (error) => {
       if (error) return done(error);
       db.refreshTokens.save(refreshToken, userId, clientId, (error) => {
@@ -63,8 +65,13 @@ function issueTokens(userId, clientId, done) {
 
 server.grant(oauth2orize.grant.code((client, redirectUri, user, ares, done) => {
   const code = utils.getUid(16);
+  console.log(`Emissione codice di autorizzazione: clientID=${client.id}, redirectUri=${redirectUri}, userID=${user.id}, code=${code}`);
   db.authorizationCodes.save(code, client.id, redirectUri, user.id, user.username, (error) => {
-    if (error) return done(error);
+    if (error) {
+      console.log(`Error saving authorization code: ${error}`);
+      return done(error);
+    }
+    console.log(`Authorization code saved successfully: ${code}`);
     return done(null, code);
   });
 }));
@@ -87,11 +94,14 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
 // custom parameters by adding these to the `done()` call
 
 server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done) => {
+  console.log(`Scambio codice per token: clientID=${client.id}, code=${code}, redirectUri=${redirectUri}`);
   db.authorizationCodes.find(code, (error, authCode) => {
+    console.log(`Validazione codice in corso: code=${code}, clientID=${client.id}, redirectUri=${redirectUri}`);
     if (error) return done(error);
     if (client.id !== authCode.clientId) return done(null, false);
     if (redirectUri !== authCode.redirectUri) return done(null, false);
 
+    console.log(`Validazione codice riuscita: code=${code}`);
     issueTokens(authCode.userId, client.clientId, done);
   });
 }));
@@ -178,6 +188,7 @@ module.exports.authorization = [
   login.ensureLoggedIn(),
   server.authorization((clientId, redirectUri, done) => {
     db.clients.findByClientId(clientId, (error, client) => {
+      console.log(`Inizio flusso di autorizzazione: clientID=${clientId}, redirectUri=${redirectUri}`);
       if (error) return done(error);
       // WARNING: For security purposes, it is highly advisable to check that
       //          redirectUri provided by the client matches one registered with
@@ -200,6 +211,7 @@ module.exports.authorization = [
     });
   }),
   (request, response) => {
+    console.log(`Rendering dialogo di autorizzazione: transactionID=${request.oauth2.transactionID}`);
     response.render('dialog', { transactionId: request.oauth2.transactionID, user: request.user, client: request.oauth2.client });
   },
 ];
@@ -213,7 +225,10 @@ module.exports.authorization = [
 
 module.exports.decision = [
   login.ensureLoggedIn(),
-  server.decision(),
+  server.decision((req, done) => {
+    console.log(`Decisione dell'utente: transactionID=${req.oauth2.transactionID}, decision=${req.body.decision}`);
+    done();
+  }),
 ];
 
 
