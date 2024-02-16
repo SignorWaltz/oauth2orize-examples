@@ -72,7 +72,7 @@ server.grant(oauth2orize.grant.code((client, redirectUri, user, ares, done) => {
       return done(error);
     }
     console.log(`Authorization code saved successfully: ${code}`);
-    return done(null, code);
+    return done(null, code); // Sembra che questo generi l'URI di reindirizzamento
   });
 }));
 
@@ -212,6 +212,7 @@ module.exports.authorization = [
   }),
   (request, response) => {
     console.log(`Rendering dialogo di autorizzazione: transactionID=${request.oauth2.transactionID}`);
+    console.log('Parametri query ricevuti:', request.query);
     response.render('dialog', { transactionId: request.oauth2.transactionID, user: request.user, client: request.oauth2.client });
   },
 ];
